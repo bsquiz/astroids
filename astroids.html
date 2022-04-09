@@ -1,0 +1,201 @@
+<html>
+	<head>
+<meta name="viewport" content="initial-scale=1.0">
+<link rel="stylesheet" href="../shared.css">
+	</head>
+	<body>
+		<div id="gameWrapper" class="">
+			<canvas id="hudArea"></canvas>
+			<canvas id="playArea"></canvas>
+		</div>
+
+		<script type="text/javascript" src="js/utils/utils.js"></script>
+		<script type="text/javascript" src="js/utils/font.js"></script>
+		<script type="text/javascript" src="js/utils/audio.js"></script>
+
+		<script type="text/javascript" src="js/AudioPlayer.js"></script>
+		<script type="text/javascript" src="js/Display.js"></script>
+
+		<script type="text/javascript" src="js/objects/GameObject.js"></script>
+		<script type="text/javascript" src="js/objects/Bullet.js"></script>
+		<script type="text/javascript" src="js/objects/Astroid.js"></script>
+		<script type="text/javascript" src="js/objects/Explosion.js"></script>
+		<script type="text/javascript" src="js/objects/Ship.js"></script>
+
+		<script type="text/javascript" src="js/game.js"></script>
+		<script>
+			document.addEventListener('keydown', e => {
+				e.preventDefault();
+				game.keysDown[e.code] = true;
+			});
+
+			document.addEventListener('keyup', e => {
+				game.keysDown[e.code] = false;
+			});
+			game.display.drawMenu(game.getHighScore());
+			window.requestAnimationFrame(() => game.update());
+		</script>
+		<style>
+			body {
+				background: black;
+				color: white;
+				font-size: 1.5em;
+				text-transform: uppercase;
+			}
+			canvas {
+				position: absolute;
+				border: solid midnightblue;
+			}
+			#hudArea {
+				border-bottom: 0;
+			}
+			#gameArea {
+				border-top: 0;
+			}
+			p {
+				margin: 10px;
+			}
+			#gameWrapper, #menu, #hud {
+				width: 800px;
+				margin: auto;
+			}
+			#background {
+				background: #0d47a1;
+			}
+			#menu {
+				height: 500px;
+				width: 350px;
+				background: black;
+				z-index: 100;
+				border: solid thick #673ab7;
+				max-height: 100%;
+			}
+			#hud {
+				display: flex;
+			}
+			#lives {
+				background: url('img/life.png');
+				background-repeat: repeat-x;
+				background-size: 16px 16px;
+				width: 48px;
+				height: 16px;
+			}
+			#playButton {
+				width: 90%;
+				margin: 5%;
+				padding: 6px;
+				border: solid 1px #673ab7;
+				background: black;
+				color: white;
+			}
+			#gameWrapper {
+				height: 500px;
+			}
+
+			#directionButtons {
+				display: none;
+			    margin-top: 16px;
+			    grid-template-columns: 1fr 1fr 1fr;
+			    grid-template-rows: 1fr 1fr 1fr;
+			}
+			#directionButtons #upButton {
+			    grid-row: 1;
+			    grid-column: 2;
+			}
+			#directionButtons #leftButton {
+			    grid-row: 2;
+			    grid-column: 1;
+			}
+			#directionButtons #downButton {
+			    grid-row: 3;
+			    grid-column: 2;
+			}
+			#directionButtons #rightButton {
+			    grid-row: 2;
+			    grid-column: 3;
+			}
+
+			#directionButtons button {
+			    width: 100%;
+			    height: 100px;
+			}
+			.mobile-instructions {
+				display: none;
+			}
+			.d-grid {
+				display: grid;
+			}
+			.font-md {
+				font-size: 1.25em;
+			}
+			.font-lg {
+				font-size: 1.5em;
+			}
+			.text-center {
+				text-align: center;
+			}
+			.full-width {
+				width: 100%;
+			}
+			.flex-full {
+				flex-grow: 1;
+			}
+			.d-flex {
+				display: flex;
+			}
+			.flex-column {
+				flex-direction: column;
+			}
+			.d-block {
+				display: block;
+			}
+			.d-none {
+				display: none;
+			}
+			.p-absolute {
+				position: absolute;
+			}
+
+			button {
+				font-size: inherit;
+			}
+
+			@media (max-width: 900px) {
+				#directionButtons {
+					display: grid;
+				}
+				.mobile-instructions {
+					display: block;
+				}
+				.desktop-instructions {
+					display: none;
+				}
+			}
+			@media (max-width: 900px) and (orientation: landscape) {
+				canvas {
+					transform: scale(0.70, 0.70);
+					margin-top: -75px;
+				}
+				#hud {
+					position: absolute;
+					left: 0;
+				}
+				#directionButtons {
+					position: absolute;
+					top: 40%;
+					width: 150px;
+					height: 150px;
+				}
+				#directionButtons button {
+					width: 100%;
+					height: 100%;
+				}
+				#musicToggle {
+					position: absolute;
+					top: 25%;
+					left: 0%;
+				}
+			}
+		</style>
+	</body>
+</html>
