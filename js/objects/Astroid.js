@@ -5,6 +5,20 @@ class Astroid extends GameObject {
 		this.points = 100;
 	}
 
+	randomPosition() {
+		this.x = Math.floor(Math.random() * Utils.WIDTH);
+		this.y = Math.floor(Math.random() * Utils.HEIGHT);
+
+		// dont position near player
+		while (
+			(this.x > Utils.WIDTH / 3 && this.x < Utils.WIDTH / 1.5)
+			&&
+			(this.y > Utils.HEIGHT / 3 && this.y < Utils.HEIGHT / 1.5)
+		) {
+			this.x = Math.floor(Math.random() * Utils.WIDTH);
+			this.y = Math.floor(Math.random() * Utils.HEIGHT);
+		}
+	}
 	setType(type) {
 		this.type = type;
 
