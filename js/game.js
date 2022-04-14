@@ -37,6 +37,7 @@ const game = {
 	gameOver() {
 		this.state = this.State.GAME_OVER;
 		this.saveHighScore(this.score);
+		this.display.clearAll();
 		this.display.drawMenu(this.getHighScore());
 		this.score = 0;
 	},
@@ -280,6 +281,8 @@ const game = {
 	},
 	start() {
 		this.state = this.State.WAVE_INTRO;
+		// draw hud first time
+		this.display.drawHUD(this.score, this.ship.lives);
 		//this.audio.playBGM();
 	},
 	getHighScore() {
