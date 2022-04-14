@@ -3,7 +3,7 @@ class Display {
 		this.$playArea = document.getElementById('playArea');
 		this.$hudArea = document.getElementById('hudArea');
 		this.$gameWrapper = document.getElementById('gameWrapper');
-
+		
 		this.$playArea.width = Utils.WIDTH;
 		this.$playArea.height = Utils.HEIGHT;
 		this.playAreaContext = this.$playArea.getContext('2d');
@@ -187,6 +187,11 @@ class Display {
 		});
 		this.playAreaContext.globalAlpha = 1;
 
+	}
+
+	clearAll() {
+		this.playAreaContext.clearRect(0, 0, Utils.WIDTH, Utils.HEIGHT);
+		this.hudAreaContext.clearRect(0, 0, Utils.WIDTH, Utils.HEIGHT);
 	}
 
 	draw(game, updateHUD = false) {
