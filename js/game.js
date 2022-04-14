@@ -67,6 +67,8 @@ const game = {
 		const astroid = this.spawnGameObject(x, y, Math.random() * Math.PI, this.astroids);
 
 		astroid.setType(type);
+
+		return astroid;
 	},
 
 	updateBullets() {
@@ -177,7 +179,6 @@ const game = {
 		if (this.keysDown[Utils.Keys.UP]) {
 			this.ship.thrust();
 		} else if (this.keysDown[Utils.Keys.DOWN]) {
-			dir = Utils.Angle.UP;
 		} else if (this.keysDown[Utils.Keys.LEFT]) {
 			this.ship.rotate(Utils.Direction.COUNTER_CLOCKWISE);
 		} else if (this.keysDown[Utils.Keys.RIGHT]) {
@@ -238,7 +239,9 @@ const game = {
 		const totalAstroids = this.waves[this.currentWave];
 
 		for (let i = 0; i < totalAstroids; i++) {
-			this.spawnAstroid(0, 0, Utils.AstroidType.LARGE);
+			const astroid = this.spawnAstroid(0, 0, Utils.AstroidType.LARGE);
+
+			astroid.randomPosition();
 		}
 
 		this.ship.reset();
@@ -259,6 +262,8 @@ const game = {
 		this.astroids = [];
 		this.score = 0;
 		this.currentWave = -1;
+
+
 		for (let i = 0; i<10; i++) {
 			this.explosions.push(new Explosion());
 			this.bullets.push(new Bullet());
