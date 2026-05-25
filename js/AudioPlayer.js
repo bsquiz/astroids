@@ -61,6 +61,16 @@ class AudioPlayer {
 			{ frequency: 262, duration: 280 }
 		], 0.1);
 	}
+	playWaveClearSnd() {
+		if (this.isMuted) return;
+
+		Utils.Audio.playToneSequence(this.square, [
+			{ frequency: 523, duration: 90, gap: 12 },
+			{ frequency: 659, duration: 90, gap: 12 },
+			{ frequency: 784, duration: 110, gap: 12 },
+			{ frequency: 1047, duration: 190 }
+		], 0.08);
+	}
 	setVolume(sound, volume) {
 		
 	}

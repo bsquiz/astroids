@@ -20,6 +20,12 @@
 				</div>
 				<button id="shootButton" class="control-button primary-control" type="button" data-key="Space" aria-label="Shoot or start">SHOOT</button>
 			</div>
+
+			<ul id="debugKeys" hidden>
+				<li><kbd>i</kbd> toggle player invincibility</li>
+				<li><kbd>a</kbd> spawn alien ship</li>
+				<li><kbd>b</kbd> spawn bonus item</li>
+			</ul>
 		</main>
 
 		<script type="text/javascript" src="js/utils/utils.js"></script>
@@ -31,7 +37,9 @@
 
 		<script type="text/javascript" src="js/objects/GameObject.js"></script>
 		<script type="text/javascript" src="js/objects/Bullet.js"></script>
+		<script type="text/javascript" src="js/objects/AlienBullet.js"></script>
 		<script type="text/javascript" src="js/objects/Asteroid.js"></script>
+		<script type="text/javascript" src="js/objects/AlienShip.js"></script>
 		<script type="text/javascript" src="js/objects/BonusItem.js"></script>
 		<script type="text/javascript" src="js/objects/Explosion.js"></script>
 		<script type="text/javascript" src="js/objects/ShipBreakup.js"></script>
@@ -48,6 +56,30 @@
 			}
 
 			document.addEventListener('keydown', e => {
+				if (game.isDebug && e.code === 'KeyI') {
+					e.preventDefault();
+					if (!e.repeat) {
+						game.toggleDebugInvincibility();
+					}
+					return;
+				}
+
+				if (game.isDebug && e.code === 'KeyA') {
+					e.preventDefault();
+					if (!e.repeat) {
+						game.spawnAlienShip();
+					}
+					return;
+				}
+
+				if (game.isDebug && e.code === 'KeyB') {
+					e.preventDefault();
+					if (!e.repeat) {
+						game.spawnBonusItem();
+					}
+					return;
+				}
+
 				if (!gameKeys.includes(e.code)) return;
 
 				e.preventDefault();
@@ -90,6 +122,9 @@
 				});
 			});
 
+			game.isDebug = new URLSearchParams(window.location.search).get('debug') === 'true';
+			document.getElementById('debugKeys').hidden = !game.isDebug;
+			game.display.init(game.isDebug);
 			game.display.drawMenu(game.getHighScore());
 			window.requestAnimationFrame(() => game.update());
 		</script>
@@ -131,15 +166,57 @@
 				aspect-ratio: 800 / 520;
 				max-height: calc(100dvh - 24px);
 				max-width: 800px;
+				overflow: hidden;
 				position: relative;
+				background: black;
+				box-shadow:
+					0 0 18px rgba(60, 110, 255, 0.18),
+					inset 0 0 28px rgba(0, 0, 0, 0.9);
 				width: min(100%, 800px);
+			}
+
+			#gameWrapper::before,
+			#gameWrapper::after {
+				content: "";
+				inset: 0;
+				pointer-events: none;
+				position: absolute;
+				z-index: 3;
+			}
+
+			#gameWrapper::before {
+				background:
+					linear-gradient(
+						rgba(255, 255, 255, 0.05) 50%,
+						rgba(0, 0, 0, 0.16) 50%
+					),
+					linear-gradient(
+						90deg,
+						rgba(255, 0, 0, 0.025),
+						rgba(0, 255, 80, 0.018),
+						rgba(70, 120, 255, 0.025)
+					);
+				background-size: 100% 4px, 6px 100%;
+				mix-blend-mode: screen;
+			}
+
+			#gameWrapper::after {
+				background:
+					radial-gradient(
+						ellipse at center,
+						rgba(255, 255, 255, 0) 48%,
+						rgba(0, 0, 0, 0.28) 78%,
+						rgba(0, 0, 0, 0.62) 100%
+					);
 			}
 
 			canvas {
 				border: solid 2px midnightblue;
 				display: block;
+				filter: blur(0.45px) contrast(1.18) saturate(1.25) brightness(1.08);
 				left: 0;
 				position: absolute;
+				text-shadow: 0 0 4px white;
 				width: 100%;
 			}
 
@@ -157,6 +234,36 @@
 
 			#touchControls {
 				display: none;
+			}
+
+			#debugKeys {
+				color: #b8ffd8;
+				display: flex;
+				flex-wrap: wrap;
+				font: 600 0.72rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+				gap: 6px 16px;
+				justify-content: center;
+				list-style: none;
+				margin: -4px 0 0;
+				max-width: 800px;
+				padding: 0;
+				text-align: center;
+				width: min(100%, 800px);
+			}
+
+			#debugKeys[hidden] {
+				display: none;
+			}
+
+			#debugKeys kbd {
+				border: 1px solid #52ff93;
+				border-radius: 4px;
+				color: white;
+				display: inline-block;
+				line-height: 1;
+				margin-right: 4px;
+				min-width: 18px;
+				padding: 2px 4px;
 			}
 
 			.control-button {

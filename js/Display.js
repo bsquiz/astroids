@@ -24,6 +24,7 @@ class Display {
 	}
 
 	drawWaveIntro(wave) {
+		this.playAreaContext.fillStyle = 'white';
 		Utils.Font.drawString(
 			`wave ${wave}`,
 			50, 50, 8,
@@ -91,6 +92,15 @@ class Display {
 		}
 		this.hudAreaContext.restore();
 		this.hudAreaContext.stroke();
+	}
+
+	drawDebugInfo(fps) {
+		this.playAreaContext.save();
+		this.playAreaContext.fillStyle = '#b8ffd8';
+		this.playAreaContext.font = '12px monospace';
+		this.playAreaContext.textBaseline = 'bottom';
+		this.playAreaContext.fillText(`fps ${fps}`, 8, Utils.HEIGHT - 8);
+		this.playAreaContext.restore();
 	}
 
 	drawShip(width, height, context = this.playAreaContext) {
@@ -175,14 +185,34 @@ class Display {
 		this.playAreaContext.restore();
 	}
 	drawAlien(alien) {
+		const { x, y, width, height, dir } = alien;
+		const centerX = x + width / 2;
+		const centerY = y + height / 2;
 
+		this.playAreaContext.save();
+		this.playAreaContext.translate(centerX, centerY);
+		this.playAreaContext.rotate(dir * 0.15);
+		this.playAreaContext.strokeStyle = '#66ffcc';
+		this.playAreaContext.fillStyle = '#102820';
+		this.playAreaContext.beginPath();
+		this.playAreaContext.ellipse(0, height / 6, width / 2, height / 3, 0, 0, Math.PI * 2);
+		this.playAreaContext.fill();
+		this.playAreaContext.stroke();
+		this.playAreaContext.beginPath();
+		this.playAreaContext.arc(0, height / 8 * -1, width / 4, Math.PI, 0);
+		this.playAreaContext.stroke();
+		this.playAreaContext.beginPath();
+		this.playAreaContext.moveTo(width / 2 * -0.7, height / 6);
+		this.playAreaContext.lineTo(width / 2 * 0.7, height / 6);
+		this.playAreaContext.stroke();
+		this.playAreaContext.restore();
 	}
 
 	drawBullet(bullet) {
 		const { x, y, width, height, dir } = bullet;
 
 		this.playAreaContext.beginPath();
-		this.playAreaContext.fillStyle = 'yellow';
+		this.playAreaContext.fillStyle = bullet.color || 'yellow';
 		this.playAreaContext.arc(x, y, width, 0, Math.PI * 2);
 		this.playAreaContext.fill();
 	
@@ -260,18 +290,22 @@ class Display {
 	}
 
 	draw(game, updateHUD = false) {
-		const { ship, shipExplosion, bullets, asteroids, explosions, bonusItem, isDebug, score, state, currentWave,
-			State } = game;
+		const { ship, shipExplosion, bullets, alienBullets, asteroids, explosions, bonusItem, alienShip, isDebug, score, state, currentWave,
+			State, fps } = game;
 		const { lives } = ship;
 
 		const activeExplosions = explosions.filter(explosion => explosion.isActive);
 		const activeBullets = bullets.filter(bullet => bullet.isActive);
+		const activeAlienBullets = alienBullets.filter(bullet => bullet.isActive);
 		const activeAsteroids = asteroids.filter(asteroid => asteroid.isActive);
 
 		this.playAreaContext.clearRect(0, 0, Utils.WIDTH, Utils.HEIGHT);
 
 		if (state === State.WAVE_INTRO) {
 			this.drawWaveIntro(currentWave + 1);
+			if (isDebug) {
+				this.drawDebugInfo(fps);
+			}
 
 			return;
 		}
@@ -289,8 +323,14 @@ class Display {
 		activeBullets.forEach(bullet => {
 			this.drawBullet(bullet);
 		});
+		activeAlienBullets.forEach(bullet => {
+			this.drawBullet(bullet);
+		});
 		if (bonusItem.isActive) {
 			this.drawBonusItem(bonusItem);
+		}
+		if (alienShip.isActive) {
+			this.drawAlien(alienShip);
 		}
 
 		activeExplosions.forEach(explosion => {
@@ -306,8 +346,17 @@ class Display {
 			const debugObjects = [
 				...activeAsteroids,
 				...activeBullets,
+				...activeAlienBullets,
 				ship
 			];
+
+			if (bonusItem.isActive) {
+				debugObjects.push(bonusItem);
+			}
+
+			if (alienShip.isActive) {
+				debugObjects.push(alienShip);
+			}
 
 			this.playAreaContext.strokeStyle = 'red';
 			debugObjects.forEach(debugObject => {
@@ -315,6 +364,7 @@ class Display {
 
 				this.playAreaContext.strokeRect(x, y, width, height);
 			});
+			this.drawDebugInfo(fps);
 		}
 	}
 }

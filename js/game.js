@@ -18,13 +18,18 @@ const game = {
 	state: 0,
 	isRunning: true,
 	currentFrame: 0,
+	fps: 0,
+	fpsFrameCount: 0,
+	fpsLastTime: 0,
 	display: new Display(),
 	audio: new AudioPlayer(),
 	ship: new Ship(),
 	shipExplosion: new ShipBreakup(),
 	bullets: [],
+	alienBullets: [],
 	explosions: [],
 	bonusItem: new BonusItem(),
+	alienShip: new AlienShip(),
 	waves: [1, 3, 5, 8, 13],
 	currentWave: -1,
 	oldScore: 0,
@@ -34,7 +39,12 @@ const game = {
 	MAX_WAVE_INTRO_TIMER: 100,
 	bonusSpawnTimer: 0,
 	bonusSpawnDelay: 900,
+	alienSpawnTimer: 0,
+	alienSpawnDelay: 1200,
+	alienShootTimer: 0,
+	alienShootDelay: 90,
 	isDebug: false,
+	debugInvincibility: false,
 	isMobile: false,
 	
 	gameOver() {
@@ -74,6 +84,31 @@ const game = {
 
 		return asteroid;
 	},
+	breakAsteroid(asteroid, awardPoints = true, playSound = true) {
+		const { x, y, points, type } = asteroid;
+		let spawnType = Utils.AsteroidType.MEDIUM;
+
+		this.spawnGameObject(x, y, 0, this.explosions);
+
+		if (awardPoints) {
+			this.score += points;
+		}
+
+		if (type === Utils.AsteroidType.MEDIUM) {
+			spawnType = Utils.AsteroidType.SMALL;
+		}
+
+		if (type !== Utils.AsteroidType.SMALL) {
+			this.spawnAsteroid(x, y, spawnType);
+			this.spawnAsteroid(x, y, spawnType);
+		}
+
+		asteroid.reset();
+
+		if (playSound) {
+			this.audio.playExplosionSnd();
+		}
+	},
 	setNextBonusSpawnDelay() {
 		this.bonusSpawnDelay = 900 + Math.floor(Math.random() * 900);
 		this.bonusSpawnTimer = 0;
@@ -87,18 +122,108 @@ const game = {
 		this.bonusItem.activate();
 		this.setNextBonusSpawnDelay();
 	},
+	setNextAlienSpawnDelay() {
+		this.alienSpawnDelay = 1200 + Math.floor(Math.random() * 1200);
+		this.alienSpawnTimer = 0;
+	},
+	spawnAlienShip() {
+		if (this.alienShip.isActive) return;
+
+		this.alienShip.spawn();
+		this.setNextAlienSpawnDelay();
+		this.setNextAlienShootDelay();
+	},
+	setNextAlienShootDelay() {
+		this.alienShootDelay = 70 + Math.floor(Math.random() * 110);
+		this.alienShootTimer = 0;
+	},
+	spawnAlienBullet() {
+		const alienCenterX = this.alienShip.x + this.alienShip.width / 2;
+		const alienCenterY = this.alienShip.y + this.alienShip.height / 2;
+		const shipCenterX = this.ship.x + this.ship.width / 2;
+		const shipCenterY = this.ship.y + this.ship.height / 2;
+		const dir = Utils.turnTowardsPoint(alienCenterX, alienCenterY, shipCenterX, shipCenterY);
+
+		this.spawnGameObject(alienCenterX, alienCenterY, dir, this.alienBullets);
+	},
+	destroyAlienShip(bullet) {
+		const alienCenterX = this.alienShip.x + this.alienShip.width / 2;
+		const alienCenterY = this.alienShip.y + this.alienShip.height / 2;
+
+		this.spawnGameObject(alienCenterX, alienCenterY, 0, this.explosions);
+		this.score += 1000;
+		this.display.drawHUD(this.score, this.ship.lives);
+		this.alienShip.reset();
+		bullet.reset();
+		this.audio.playExplosionSnd();
+	},
 
 	updateBullets() {
 		const activeBullets = this.bullets.filter(bullet => bullet.isActive);
 
 		activeBullets.forEach(bullet => {
 			bullet.update();
+
+			if (this.alienShip.isActive && Utils.rectsOverlap(bullet, this.alienShip)) {
+				this.destroyAlienShip(bullet);
+			}
+		});
+	},
+	updateAlienBullets() {
+		const activeAlienBullets = this.alienBullets.filter(bullet => bullet.isActive);
+
+		activeAlienBullets.forEach(bullet => {
+			bullet.update();
+
+			if (Utils.rectsOverlap(this.ship, bullet) && this.damageShip()) {
+				bullet.reset();
+			}
 		});
 	},
 
 	checkCanShoot() {
 		return this.keysDown[Utils.Keys.SPACE]
 			&& this.ship.canShoot;
+	},
+	applyDebugInvincibility() {
+		if (!this.debugInvincibility) return;
+
+		this.ship.isInvincible = true;
+		this.ship.invincibleTimer = Infinity;
+	},
+	toggleDebugInvincibility() {
+		if (!this.isDebug) return;
+
+		this.debugInvincibility = !this.debugInvincibility;
+		this.ship.isInvincible = this.debugInvincibility;
+		this.ship.invincibleTimer = this.debugInvincibility ? Infinity : this.ship.MAX_INVINCIBLE_TIMER;
+	},
+
+	damageShip() {
+		if (this.ship.isInvincible) return false;
+
+		if (this.ship.hasShield) {
+			this.ship.hasShield = false;
+			this.ship.isInvincible = true;
+			return true;
+		}
+
+		const { x, y, dir } = this.ship;
+
+		this.spawnGameObject(x, y, dir, this.explosions);
+		this.shipExplosion.spawnFromShip(this.ship);
+		this.ship.lives--;
+		this.display.drawHUD(this.score, this.ship.lives);
+		this.ship.isInvincible = true;
+		this.ship.resetPosition();
+		this.audio.playExplosionSnd();
+
+		if (this.ship.lives === 0) {
+			this.audio.playGameOverSnd();
+			this.gameOver();
+		}
+
+		return true;
 	},
 
 	hitTestShip(hitTestObject) {
@@ -113,27 +238,11 @@ const game = {
 				}
 			}
 			if (isHit) {
-				if (this.ship.hasShield) {
-					this.ship.hasShield = false;
-					this.ship.isInvincible = true;
-				} else {
-					const { x, y, dir } = this.ship;
-
-					this.spawnGameObject(x, y, dir, this.explosions);
-					this.shipExplosion.spawnFromShip(this.ship);
-					this.ship.lives--;
-					this.display.drawHUD(this.score, this.ship.lives);
-					this.ship.isInvincible = true;
-					this.ship.resetPosition();
-					this.audio.playExplosionSnd();
-
-					if (this.ship.lives === 0) {
-						this.audio.playGameOverSnd();
-						this.gameOver();
-					}
-				}
+				return this.damageShip();
 			}
 		}
+
+		return false;
 	},
 	updateAsteroids() {
 		const activeAsteroids = this.asteroids.filter(asteroid => asteroid.isActive);
@@ -147,30 +256,15 @@ const game = {
 					bullet.isActive = false;
 
 					if (asteroid.takeDamage(1)) {
-						const { x, y, dir, points, type } = asteroid;
-						let spawnType = Utils.AsteroidType.MEDIUM;
-
-						this.spawnGameObject(x, y, 0, this.explosions);
-
-						this.score += points;
-
-						if (type === Utils.AsteroidType.MEDIUM) {
-							spawnType = Utils.AsteroidType.SMALL;
-						}
-
-						if (type !== Utils.AsteroidType.SMALL) {
-							this.spawnAsteroid(x, y, spawnType);
-							this.spawnAsteroid(x, y, spawnType);
-						}
-
-						asteroid.reset();
+						this.breakAsteroid(asteroid);
 						bullet.reset();
-						this.audio.playExplosionSnd();
 					}
 				}
 			});
 
-			this.hitTestShip(asteroid);
+			if (asteroid.isActive && this.hitTestShip(asteroid)) {
+				this.breakAsteroid(asteroid, false, false);
+			}
 		});
 	},
 	updateExplosions() {
@@ -203,14 +297,32 @@ const game = {
 			this.spawnBonusItem();
 		}
 	},
+	updateAlienShip() {
+		if (this.alienShip.isActive) {
+			this.alienShip.update();
+			this.alienShootTimer++;
+
+			if (this.alienShootTimer >= this.alienShootDelay) {
+				this.spawnAlienBullet();
+				this.setNextAlienShootDelay();
+			}
+
+			return;
+		}
+
+		this.alienSpawnTimer++;
+		if (this.alienSpawnTimer >= this.alienSpawnDelay) {
+			this.spawnAlienShip();
+		}
+	},
 	updateShip() {
 		this.ship.update();
 
 		if (this.checkCanShoot()) {
-			const { x, y, width, dir } = this.ship;
+			const { x, y, width, height, dir } = this.ship;
 
 			const bullet = this.spawnGameObject(
-			Math.floor(x + width / 2), y, dir, this.bullets);
+			Math.floor(x + width / 2), Math.floor(y + height / 2), dir, this.bullets);
 			this.ship.canShoot = false;
 			this.audio.playPlayerShootSnd();
 		}
@@ -229,9 +341,10 @@ const game = {
 		}
 	},
 
-	update() {
+	update(timestamp = performance.now()) {
 		if (this.isRunning) {
 			this.currentFrame++;
+			this.updateFPS(timestamp);
 			switch (this.state) {
 				case this.State.WAVE_INTRO:
 					this.waveIntroTimer++;
@@ -245,10 +358,13 @@ const game = {
 					this.updateShip();
 					this.updateAsteroids();
 					this.updateBullets();
+					this.updateAlienBullets();
 					this.updateExplosions();
 					this.updateBonusItem();
+					this.updateAlienShip();
 
 					if (!this.asteroids.find(asteroid => asteroid.isActive)) {
+						this.audio.playWaveClearSnd();
 						this.nextWave();
 					}
 				break;
@@ -267,7 +383,20 @@ const game = {
 				this.display.draw(this, this.shouldUpdateHUD());
 			}
 
-			window.requestAnimationFrame(() => game.update());
+			window.requestAnimationFrame(timestamp => game.update(timestamp));
+		}
+	},
+	updateFPS(timestamp) {
+		if (!this.fpsLastTime) {
+			this.fpsLastTime = timestamp;
+		}
+
+		this.fpsFrameCount++;
+
+		if (timestamp - this.fpsLastTime >= 500) {
+			this.fps = Math.round(this.fpsFrameCount * 1000 / (timestamp - this.fpsLastTime));
+			this.fpsFrameCount = 0;
+			this.fpsLastTime = timestamp;
 		}
 	},
 	shouldUpdateHUD() {
@@ -295,9 +424,14 @@ const game = {
 		this.bullets.forEach(bullet => {
 			bullet.reset();
 		});
+		this.alienBullets.forEach(bullet => {
+			bullet.reset();
+		});
 		this.bonusItem.reset();
+		this.alienShip.reset();
 		this.shipExplosion.reset();
 		this.setNextBonusSpawnDelay();
+		this.applyDebugInvincibility();
 
 	},
 	reset() {
@@ -305,18 +439,22 @@ const game = {
 		this.state = 0;
 		this.ship = new Ship();
 		this.bullets = [];
+		this.alienBullets = [];
 		this.explosions = [];
 		this.asteroids = [];
 		this.bonusItem = new BonusItem();
+		this.alienShip = new AlienShip();
 		this.shipExplosion = new ShipBreakup();
 		this.score = 0;
 		this.currentWave = -1;
 		this.setNextBonusSpawnDelay();
+		this.setNextAlienSpawnDelay();
 
 
 		for (let i = 0; i<10; i++) {
 			this.explosions.push(new Explosion());
 			this.bullets.push(new Bullet());
+			this.alienBullets.push(new AlienBullet());
 		}
 		for (let i=0; i<78; i++) {
 			this.asteroids.push(new Asteroid());
@@ -325,6 +463,7 @@ const game = {
 		this.audio.init();
 
 		this.ship.resetPosition();
+		this.applyDebugInvincibility();
 		//this.ship.maxSpeed = 5; // test
 		//this.display.drawHUD(this.score, this.ship.lives);
 	},
