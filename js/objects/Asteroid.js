@@ -1,4 +1,4 @@
-class Astroid extends GameObject {
+class Asteroid extends GameObject {
 	constructor() {
 		super();
 		this.turn(Math.random() * Math.PI);
@@ -22,10 +22,10 @@ class Astroid extends GameObject {
 	setType(type) {
 		this.type = type;
 
-		if (type === Utils.AstroidType.LARGE) {
+		if (type === Utils.AsteroidType.LARGE) {
 			this.width = 48;
 			this.height = 48;
-		} else if (type === Utils.AstroidType.MEDIUM) {
+		} else if (type === Utils.AsteroidType.MEDIUM) {
 			this.width = 32;
 			this.height = 32;
 		} else {

@@ -1,0 +1,262 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+		<link rel="stylesheet" href="../shared.css">
+	</head>
+	<body>
+		<main id="gameShell">
+			<div id="gameWrapper">
+				<canvas id="hudArea"></canvas>
+				<canvas id="playArea"></canvas>
+			</div>
+
+			<div id="touchControls" aria-label="Touch controls">
+				<div id="directionButtons">
+					<button id="leftButton" class="control-button" type="button" data-key="ArrowLeft" aria-label="Turn left">LEFT</button>
+					<button id="upButton" class="control-button" type="button" data-key="ArrowUp" aria-label="Thrust">THRUST</button>
+					<button id="rightButton" class="control-button" type="button" data-key="ArrowRight" aria-label="Turn right">RIGHT</button>
+				</div>
+				<button id="shootButton" class="control-button primary-control" type="button" data-key="Space" aria-label="Shoot or start">SHOOT</button>
+			</div>
+		</main>
+
+		<script type="text/javascript" src="js/utils/utils.js"></script>
+		<script type="text/javascript" src="js/utils/font.js"></script>
+		<script type="text/javascript" src="js/utils/audio.js"></script>
+
+		<script type="text/javascript" src="js/AudioPlayer.js"></script>
+		<script type="text/javascript" src="js/Display.js"></script>
+
+		<script type="text/javascript" src="js/objects/GameObject.js"></script>
+		<script type="text/javascript" src="js/objects/Bullet.js"></script>
+		<script type="text/javascript" src="js/objects/Asteroid.js"></script>
+		<script type="text/javascript" src="js/objects/BonusItem.js"></script>
+		<script type="text/javascript" src="js/objects/Explosion.js"></script>
+		<script type="text/javascript" src="js/objects/ShipBreakup.js"></script>
+		<script type="text/javascript" src="js/objects/Ship.js"></script>
+
+		<script type="text/javascript" src="js/game.js"></script>
+		<script>
+			const gameKeys = Object.values(Utils.Keys);
+
+			function setKey(code, isDown) {
+				if (gameKeys.includes(code)) {
+					game.keysDown[code] = isDown;
+				}
+			}
+
+			document.addEventListener('keydown', e => {
+				if (!gameKeys.includes(e.code)) return;
+
+				e.preventDefault();
+				setKey(e.code, true);
+			});
+
+			document.addEventListener('keyup', e => {
+				setKey(e.code, false);
+			});
+
+			document.querySelectorAll('[data-key]').forEach(button => {
+				const key = button.dataset.key;
+				const releaseKey = () => {
+					window.requestAnimationFrame(() => setKey(key, false));
+				};
+
+				button.addEventListener('pointerdown', e => {
+					e.preventDefault();
+					button.setPointerCapture(e.pointerId);
+					button.classList.add('is-active');
+					setKey(key, true);
+				});
+
+				['pointerup', 'pointercancel', 'lostpointercapture'].forEach(eventName => {
+					button.addEventListener(eventName, e => {
+						e.preventDefault();
+						button.classList.remove('is-active');
+						releaseKey();
+					});
+				});
+
+				button.addEventListener('click', e => e.preventDefault());
+				button.addEventListener('contextmenu', e => e.preventDefault());
+			});
+
+			window.addEventListener('blur', () => {
+				gameKeys.forEach(code => setKey(code, false));
+				document.querySelectorAll('.control-button').forEach(button => {
+					button.classList.remove('is-active');
+				});
+			});
+
+			game.display.drawMenu(game.getHighScore());
+			window.requestAnimationFrame(() => game.update());
+		</script>
+		<style>
+			* {
+				box-sizing: border-box;
+			}
+
+			html,
+			body {
+				margin: 0;
+				min-height: 100%;
+				overflow: hidden;
+			}
+
+			body {
+				background: black;
+				color: white;
+				font-family: system-ui, sans-serif;
+				font-size: 1rem;
+				text-transform: uppercase;
+				touch-action: none;
+				-webkit-user-select: none;
+				user-select: none;
+			}
+
+			#gameShell {
+				align-items: center;
+				display: flex;
+				flex-direction: column;
+				gap: 12px;
+				height: 100dvh;
+				justify-content: center;
+				padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+				width: 100vw;
+			}
+
+			#gameWrapper {
+				aspect-ratio: 800 / 520;
+				max-height: calc(100dvh - 24px);
+				max-width: 800px;
+				position: relative;
+				width: min(100%, 800px);
+			}
+
+			canvas {
+				border: solid 2px midnightblue;
+				display: block;
+				left: 0;
+				position: absolute;
+				width: 100%;
+			}
+
+			#hudArea {
+				border-bottom: 0;
+				height: calc(100% * 20 / 520);
+				top: 0;
+			}
+
+			#playArea {
+				border-top: 0;
+				height: calc(100% * 500 / 520);
+				top: calc(100% * 20 / 520);
+			}
+
+			#touchControls {
+				display: none;
+			}
+
+			.control-button {
+				align-items: center;
+				appearance: none;
+				background: #090909;
+				border: 2px solid #335fc7;
+				border-radius: 8px;
+				color: white;
+				display: flex;
+				font: 700 0.85rem/1 system-ui, sans-serif;
+				justify-content: center;
+				letter-spacing: 0;
+				min-height: 56px;
+				min-width: 56px;
+				padding: 0 10px;
+				touch-action: none;
+			}
+
+			.control-button.is-active {
+				background: #1d3f87;
+				border-color: white;
+			}
+
+			.primary-control {
+				border-color: #a14fdb;
+			}
+
+			@media (hover: none), (pointer: coarse), (max-width: 900px) {
+				#gameShell {
+					justify-content: flex-start;
+					padding-bottom: max(14px, env(safe-area-inset-bottom));
+				}
+
+				#gameWrapper {
+					max-height: calc(100dvh - 154px - env(safe-area-inset-bottom));
+					width: min(100%, 800px);
+				}
+
+				#touchControls {
+					display: grid;
+					gap: 10px;
+					grid-template-columns: minmax(0, 1fr) minmax(84px, 0.4fr);
+					max-width: 800px;
+					width: min(100%, 800px);
+				}
+
+				#directionButtons {
+					display: grid;
+					gap: 10px;
+					grid-template-columns: repeat(3, minmax(0, 1fr));
+				}
+
+				#shootButton {
+					height: 100%;
+					min-height: 74px;
+				}
+			}
+
+			@media (max-width: 380px) and (orientation: portrait) {
+				.control-button {
+					font-size: 0.72rem;
+					padding: 0 4px;
+				}
+			}
+
+			@media (hover: none) and (orientation: landscape), (pointer: coarse) and (orientation: landscape), (max-width: 900px) and (orientation: landscape) {
+				#gameShell {
+					display: grid;
+					gap: 10px;
+					grid-template-columns: 108px minmax(0, 1fr) 108px;
+					justify-items: center;
+				}
+
+				#gameWrapper {
+					grid-column: 2;
+					max-height: calc(100dvh - 16px);
+					width: min(100%, 800px);
+				}
+
+				#touchControls {
+					display: contents;
+				}
+
+				#directionButtons {
+					align-self: center;
+					display: grid;
+					gap: 8px;
+					grid-column: 1;
+					grid-template-columns: 1fr;
+					width: 100%;
+				}
+
+				#shootButton {
+					align-self: center;
+					grid-column: 3;
+					height: 108px;
+					width: 100%;
+				}
+			}
+		</style>
+	</body>
+</html>

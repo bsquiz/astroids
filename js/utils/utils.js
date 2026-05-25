@@ -20,7 +20,7 @@ const Utils = {
 		'RIGHT': 'ArrowRight',
 		'SPACE': 'Space'
 	},
-	AstroidType: {
+	AsteroidType: {
 		LARGE: 0,
 		MEDIUM: 1,
 		SMALL: 2
@@ -49,5 +49,11 @@ const Utils = {
 			&& gameObject1.y < gameObject2.y + gameObject2.height;
 
 		return (xContained && yContained);
+	},
+	rectsOverlap(gameObject1, gameObject2) {
+		return gameObject1.x < gameObject2.x + gameObject2.width
+			&& gameObject1.x + gameObject1.width > gameObject2.x
+			&& gameObject1.y < gameObject2.y + gameObject2.height
+			&& gameObject1.y + gameObject1.height > gameObject2.y;
 	}
 }

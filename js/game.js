@@ -21,9 +21,10 @@ const game = {
 	display: new Display(),
 	audio: new AudioPlayer(),
 	ship: new Ship(),
-	shipExplosion: new Explosion(4),
+	shipExplosion: new ShipBreakup(),
 	bullets: [],
 	explosions: [],
+	bonusItem: new BonusItem(),
 	waves: [1, 3, 5, 8, 13],
 	currentWave: -1,
 	oldScore: 0,
@@ -31,6 +32,8 @@ const game = {
 	oldLives: 3,
 	waveIntroTimer: 0,
 	MAX_WAVE_INTRO_TIMER: 100,
+	bonusSpawnTimer: 0,
+	bonusSpawnDelay: 900,
 	isDebug: false,
 	isMobile: false,
 	
@@ -64,12 +67,25 @@ const game = {
 		}
 	},
 
-	spawnAstroid(x, y, type) {
-		const astroid = this.spawnGameObject(x, y, Math.random() * Math.PI, this.astroids);
+	spawnAsteroid(x, y, type) {
+		const asteroid = this.spawnGameObject(x, y, Math.random() * Math.PI, this.asteroids);
 
-		astroid.setType(type);
+		asteroid.setType(type);
 
-		return astroid;
+		return asteroid;
+	},
+	setNextBonusSpawnDelay() {
+		this.bonusSpawnDelay = 900 + Math.floor(Math.random() * 900);
+		this.bonusSpawnTimer = 0;
+	},
+	spawnBonusItem() {
+		if (this.bonusItem.isActive) return;
+
+		this.bonusItem.randomPosition();
+		this.bonusItem.turn(Math.random() * Math.PI * 2);
+		this.bonusItem.reset();
+		this.bonusItem.activate();
+		this.setNextBonusSpawnDelay();
 	},
 
 	updateBullets() {
@@ -104,58 +120,57 @@ const game = {
 					const { x, y, dir } = this.ship;
 
 					this.spawnGameObject(x, y, dir, this.explosions);
-					this.shipExplosion.reset();
-					this.shipExplosion.activate();
+					this.shipExplosion.spawnFromShip(this.ship);
 					this.ship.lives--;
 					this.display.drawHUD(this.score, this.ship.lives);
 					this.ship.isInvincible = true;
 					this.ship.resetPosition();
-					//this.audio.play(this.audio.Sound.EXPLOSION);
+					this.audio.playExplosionSnd();
 
 					if (this.ship.lives === 0) {
+						this.audio.playGameOverSnd();
 						this.gameOver();
 					}
 				}
 			}
 		}
 	},
-	updateAstroids() {
-		const activeAstroids = this.astroids.filter(astroid => astroid.isActive);
+	updateAsteroids() {
+		const activeAsteroids = this.asteroids.filter(asteroid => asteroid.isActive);
 		const activeBullets = this.bullets.filter(bullet => bullet.isActive);
 
-		activeAstroids.forEach(astroid => {
-			astroid.update();
+		activeAsteroids.forEach(asteroid => {
+			asteroid.update();
 
 			activeBullets.forEach(bullet => {
-				if (Utils.hitTest(bullet, astroid)) {
+				if (Utils.hitTest(bullet, asteroid)) {
 					bullet.isActive = false;
 
-					if (astroid.takeDamage(1)) {
-						const { x, y, dir, points, type } = astroid;
-						let spawnType = Utils.AstroidType.MEDIUM;
+					if (asteroid.takeDamage(1)) {
+						const { x, y, dir, points, type } = asteroid;
+						let spawnType = Utils.AsteroidType.MEDIUM;
 
 						this.spawnGameObject(x, y, 0, this.explosions);
 
 						this.score += points;
 
-						if (type === Utils.AstroidType.MEDIUM) {
-							spawnType = Utils.AstroidType.SMALL;
+						if (type === Utils.AsteroidType.MEDIUM) {
+							spawnType = Utils.AsteroidType.SMALL;
 						}
 
-						if (type !== Utils.AstroidType.SMALL) {
-													this.spawnAstroid(x, y, spawnType);
-						this.spawnAstroid(x, y, spawnType);
-
+						if (type !== Utils.AsteroidType.SMALL) {
+							this.spawnAsteroid(x, y, spawnType);
+							this.spawnAsteroid(x, y, spawnType);
 						}
 
-						astroid.reset();
+						asteroid.reset();
 						bullet.reset();
 						this.audio.playExplosionSnd();
 					}
 				}
 			});
 
-			this.hitTestShip(astroid);
+			this.hitTestShip(asteroid);
 		});
 	},
 	updateExplosions() {
@@ -164,6 +179,29 @@ const game = {
 				explosion.update();
 			}
 		});
+		if (this.shipExplosion.isActive) {
+			this.shipExplosion.update();
+		}
+	},
+	updateBonusItem() {
+		if (this.bonusItem.isActive) {
+			this.bonusItem.update();
+			if (!this.bonusItem.isActive) return;
+
+			if (Utils.rectsOverlap(this.ship, this.bonusItem)) {
+				this.score += this.bonusItem.points;
+				this.bonusItem.reset();
+				this.display.drawHUD(this.score, this.ship.lives);
+				this.audio.playBonusPickupSnd();
+			}
+
+			return;
+		}
+
+		this.bonusSpawnTimer++;
+		if (this.bonusSpawnTimer >= this.bonusSpawnDelay) {
+			this.spawnBonusItem();
+		}
 	},
 	updateShip() {
 		this.ship.update();
@@ -179,8 +217,12 @@ const game = {
 
 		if (this.keysDown[Utils.Keys.UP]) {
 			this.ship.thrust();
-		} else if (this.keysDown[Utils.Keys.DOWN]) {
-		} else if (this.keysDown[Utils.Keys.LEFT]) {
+			this.audio.startThrusterSnd();
+		} else {
+			this.audio.stopThrusterSnd();
+		}
+
+		if (this.keysDown[Utils.Keys.LEFT]) {
 			this.ship.rotate(Utils.Direction.COUNTER_CLOCKWISE);
 		} else if (this.keysDown[Utils.Keys.RIGHT]) {
 			this.ship.rotate(Utils.Direction.CLOCKWISE);
@@ -201,11 +243,12 @@ const game = {
 				break;
 				case this.State.PLAYING:
 					this.updateShip();
-					this.updateAstroids();
+					this.updateAsteroids();
 					this.updateBullets();
 					this.updateExplosions();
+					this.updateBonusItem();
 
-					if (!this.astroids.find(astroid => astroid.isActive)) {
+					if (!this.asteroids.find(asteroid => asteroid.isActive)) {
 						this.nextWave();
 					}
 				break;
@@ -237,12 +280,12 @@ const game = {
 			this.currentWave++;
 		}
 
-		const totalAstroids = this.waves[this.currentWave];
+		const totalAsteroids = this.waves[this.currentWave];
 
-		for (let i = 0; i < totalAstroids; i++) {
-			const astroid = this.spawnAstroid(0, 0, Utils.AstroidType.LARGE);
+		for (let i = 0; i < totalAsteroids; i++) {
+			const asteroid = this.spawnAsteroid(0, 0, Utils.AsteroidType.LARGE);
 
-			astroid.randomPosition();
+			asteroid.randomPosition();
 		}
 
 		this.ship.reset();
@@ -252,17 +295,23 @@ const game = {
 		this.bullets.forEach(bullet => {
 			bullet.reset();
 		});
+		this.bonusItem.reset();
+		this.shipExplosion.reset();
+		this.setNextBonusSpawnDelay();
 
 	},
 	reset() {
-		this.isMobile = window.matchMedia('max-width: 900px').matches;
+		this.isMobile = window.matchMedia('(max-width: 900px)').matches;
 		this.state = 0;
 		this.ship = new Ship();
 		this.bullets = [];
 		this.explosions = [];
-		this.astroids = [];
+		this.asteroids = [];
+		this.bonusItem = new BonusItem();
+		this.shipExplosion = new ShipBreakup();
 		this.score = 0;
 		this.currentWave = -1;
+		this.setNextBonusSpawnDelay();
 
 
 		for (let i = 0; i<10; i++) {
@@ -270,7 +319,7 @@ const game = {
 			this.bullets.push(new Bullet());
 		}
 		for (let i=0; i<78; i++) {
-			this.astroids.push(new Astroid());
+			this.asteroids.push(new Asteroid());
 		}
 		this.nextWave();
 		this.audio.init();
@@ -286,13 +335,15 @@ const game = {
 		//this.audio.playBGM();
 	},
 	getHighScore() {
-		return window.localStorage.getItem('astroids_highscore') || 0;
+		return window.localStorage.getItem('asteroids_highscore')
+			|| window.localStorage.getItem('astroids_highscore')
+			|| 0;
 	},
 	saveHighScore(score) {
 		const oldScore = this.getHighScore();
 
 		if (oldScore < score) {
-			window.localStorage.setItem('astroids_highscore', score);
+			window.localStorage.setItem('asteroids_highscore', score);
 		}
 	}
 };

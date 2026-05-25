@@ -31,27 +31,40 @@ class Display {
 			);
 	}
 	drawMenu(highScore = 0) {
+		const hasTouchControls = window.matchMedia('(hover: none), (pointer: coarse), (max-width: 900px)').matches;
+
 		this.playAreaContext.clearRect(0, 0, Utils.WIDTH, Utils.HEIGHT);
 		this.playAreaContext.fillStyle = 'white';
 		Utils.Font.drawString(
-			'astroids',
+			'asteroids',
 			0,0,8,
 			this.playAreaContext);
 		Utils.Font.drawString(
 			`high score ${highScore}`,
 			0,100,6,
 			this.playAreaContext);
-				Utils.Font.drawString(
-			'move: arrows',
-			0,200,4,
-			this.playAreaContext);
-		Utils.Font.drawString(
-			'shoot: spacebar',
-			400,200,4,
-			this.playAreaContext);
+		if (hasTouchControls) {
+			Utils.Font.drawString(
+				'move: pad',
+				0,200,4,
+				this.playAreaContext);
+			Utils.Font.drawString(
+				'shoot: tap',
+				400,200,4,
+				this.playAreaContext);
+		} else {
+			Utils.Font.drawString(
+				'move: arrows',
+				0,200,4,
+				this.playAreaContext);
+			Utils.Font.drawString(
+				'shoot: spacebar',
+				400,200,4,
+				this.playAreaContext);
+		}
 
 		Utils.Font.drawString(
-			'press space to start',
+			hasTouchControls ? 'tap shoot to start' : 'press space to start',
 			0,400,6,
 			this.playAreaContext);
 
@@ -120,7 +133,7 @@ class Display {
 		this.playAreaContext.restore();
 	}
 
-	drawLargeAstroid(width, height) {
+	drawLargeAsteroid(width, height) {
 		this.playAreaContext.moveTo((width / 2) * -1, height / 4 * -1);
 		this.playAreaContext.lineTo(width / 4 * -1, height / 2 * -1);
 		this.playAreaContext.lineTo(width / 2, height / 2 * -1);
@@ -130,33 +143,33 @@ class Display {
 		this.playAreaContext.lineTo(width / 2 * -1, height / 4 * -1);
 	}
 
-	drawMediumAstroid(width, height) {
+	drawMediumAsteroid(width, height) {
 		this.playAreaContext.moveTo((width / 2) * -1, (height / 2) * -1);
 		this.playAreaContext.lineTo((width / 4), height / 4 * -1);
 		this.playAreaContext.lineTo((width / 2), (height / 4));
 		this.playAreaContext.lineTo((width / 4) * -1, (height / 4));
 		this.playAreaContext.lineTo((width / 2) * -1, (height / 2) * -1);
 	}
-	drawSmallAstroid(width, height) {
+	drawSmallAsteroid(width, height) {
 		this.playAreaContext.moveTo(width / 2 * -1, height / 2 * -1);
 		this.playAreaContext.lineTo(width / 1.5, height / 2 * -1);
 		this.playAreaContext.lineTo(width / 1.5, height / 2);
 		this.playAreaContext.lineTo(width / 2 * -1, height / 2);
 		this.playAreaContext.lineTo(width / 2 * -1, height / 2 * -1);
 	}
-	drawAstroid(astroid) {
-		const { x, y, width, height, dir, type } = astroid;
+	drawAsteroid(asteroid) {
+		const { x, y, width, height, dir, type } = asteroid;
 
 		this.playAreaContext.save();
 		this.playAreaContext.translate(x + width / 2, y + height / 2);
 		this.playAreaContext.rotate(dir);
 
-		if (type === Utils.AstroidType.LARGE) {
-			this.drawLargeAstroid(width, height);
-		} else if (type === Utils.AstroidType.MEDIUM) {
-			this.drawMediumAstroid(width, height);
+		if (type === Utils.AsteroidType.LARGE) {
+			this.drawLargeAsteroid(width, height);
+		} else if (type === Utils.AsteroidType.MEDIUM) {
+			this.drawMediumAsteroid(width, height);
 		} else {
-			this.drawSmallAstroid(width, height);
+			this.drawSmallAsteroid(width, height);
 		}
 
 		this.playAreaContext.restore();
@@ -168,9 +181,39 @@ class Display {
 	drawBullet(bullet) {
 		const { x, y, width, height, dir } = bullet;
 
-		this.playAreaContext.moveTo(x, y);
+		this.playAreaContext.beginPath();
+		this.playAreaContext.fillStyle = 'yellow';
 		this.playAreaContext.arc(x, y, width, 0, Math.PI * 2);
+		this.playAreaContext.fill();
 	
+	}
+	drawBonusItem(bonusItem) {
+		const { x, y, width, height, dir } = bonusItem;
+		const centerX = x + width / 2;
+		const centerY = y + height / 2;
+
+		this.playAreaContext.save();
+		this.playAreaContext.translate(centerX, centerY);
+		this.playAreaContext.rotate(dir);
+		this.playAreaContext.beginPath();
+		this.playAreaContext.fillStyle = '#ffd84d';
+		this.playAreaContext.moveTo(0, height / 2 * -1);
+		this.playAreaContext.lineTo(width / 2, 0);
+		this.playAreaContext.lineTo(0, height / 2);
+		this.playAreaContext.lineTo(width / 2 * -1, 0);
+		this.playAreaContext.closePath();
+		this.playAreaContext.fill();
+		this.playAreaContext.strokeStyle = 'white';
+		this.playAreaContext.stroke();
+		this.playAreaContext.beginPath();
+		this.playAreaContext.strokeStyle = '#fff4a3';
+		this.playAreaContext.moveTo(0, height / 2 * -0.65);
+		this.playAreaContext.lineTo(width / 4, 0);
+		this.playAreaContext.lineTo(0, height / 2 * 0.65);
+		this.playAreaContext.lineTo(width / 4 * -1, 0);
+		this.playAreaContext.closePath();
+		this.playAreaContext.stroke();
+		this.playAreaContext.restore();
 	}
 
 	drawExplosion(explosion) {
@@ -181,12 +224,34 @@ class Display {
 		explosion.particles.forEach(particle => {
 			const { x, y, color } = particle;
 			this.playAreaContext.beginPath();
-			this.playAreaContext.strokeStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
-			this.playAreaContext.arc(x, y, 1, 0,Math.PI * 2);
-			this.playAreaContext.stroke();
+			this.playAreaContext.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
+			this.playAreaContext.arc(x, y, 2, 0,Math.PI * 2);
+			this.playAreaContext.fill();
 		});
 		this.playAreaContext.globalAlpha = 1;
 
+	}
+	drawShipBreakup(shipExplosion) {
+		const { x, y, aliveTime, TOTAL_ALIVE_TIME } = shipExplosion;
+
+		this.playAreaContext.save();
+		this.playAreaContext.globalAlpha = (TOTAL_ALIVE_TIME - aliveTime) / TOTAL_ALIVE_TIME;
+		this.playAreaContext.strokeStyle = 'white';
+		this.playAreaContext.lineWidth = 2;
+		shipExplosion.fragments.forEach(fragment => {
+			const centerX = (fragment.x1 + fragment.x2) / 2;
+			const centerY = (fragment.y1 + fragment.y2) / 2;
+
+			this.playAreaContext.save();
+			this.playAreaContext.translate(x + centerX, y + centerY);
+			this.playAreaContext.rotate(fragment.rotation);
+			this.playAreaContext.beginPath();
+			this.playAreaContext.moveTo(fragment.x1 - centerX, fragment.y1 - centerY);
+			this.playAreaContext.lineTo(fragment.x2 - centerX, fragment.y2 - centerY);
+			this.playAreaContext.stroke();
+			this.playAreaContext.restore();
+		});
+		this.playAreaContext.restore();
 	}
 
 	clearAll() {
@@ -195,13 +260,13 @@ class Display {
 	}
 
 	draw(game, updateHUD = false) {
-		const { ship, bullets, astroids, explosions, isDebug, score, state, currentWave,
+		const { ship, shipExplosion, bullets, asteroids, explosions, bonusItem, isDebug, score, state, currentWave,
 			State } = game;
 		const { lives } = ship;
 
 		const activeExplosions = explosions.filter(explosion => explosion.isActive);
 		const activeBullets = bullets.filter(bullet => bullet.isActive);
-		const activeAstroids = astroids.filter(astroid => astroid.isActive);
+		const activeAsteroids = asteroids.filter(asteroid => asteroid.isActive);
 
 		this.playAreaContext.clearRect(0, 0, Utils.WIDTH, Utils.HEIGHT);
 
@@ -216,24 +281,30 @@ class Display {
 		this.playAreaContext.beginPath();
 		this.drawPlayer(ship);
 
-		activeAstroids.forEach(astroid => {
-			this.drawAstroid(astroid);
+		activeAsteroids.forEach(asteroid => {
+			this.drawAsteroid(asteroid);
 		});
+		this.playAreaContext.stroke();
 
 		activeBullets.forEach(bullet => {
 			this.drawBullet(bullet);
 		});
-		this.playAreaContext.stroke();
+		if (bonusItem.isActive) {
+			this.drawBonusItem(bonusItem);
+		}
 
 		activeExplosions.forEach(explosion => {
 			this.drawExplosion(explosion);
 		});
+		if (shipExplosion.isActive) {
+			this.drawShipBreakup(shipExplosion);
+		}
 		if (updateHUD) {
 			this.drawHUD(score, lives);
 		}
 		if (isDebug) {
 			const debugObjects = [
-				...activeAstroids,
+				...activeAsteroids,
 				...activeBullets,
 				ship
 			];
