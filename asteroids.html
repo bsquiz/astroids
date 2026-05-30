@@ -14,9 +14,9 @@
 
 			<div id="touchControls" aria-label="Touch controls">
 				<div id="directionButtons">
-					<button id="leftButton" class="control-button" type="button" data-key="ArrowLeft" aria-label="Turn left">LEFT</button>
-					<button id="upButton" class="control-button" type="button" data-key="ArrowUp" aria-label="Thrust">THRUST</button>
-					<button id="rightButton" class="control-button" type="button" data-key="ArrowRight" aria-label="Turn right">RIGHT</button>
+					<button id="leftButton" class="control-button" type="button" data-key="ArrowLeft" aria-label="Turn left">&larr;</button>
+					<button id="upButton" class="control-button" type="button" data-key="ArrowUp" aria-label="Thrust">&uarr;</button>
+					<button id="rightButton" class="control-button" type="button" data-key="ArrowRight" aria-label="Turn right">&rarr;</button>
 				</div>
 				<button id="shootButton" class="control-button primary-control" type="button" data-key="Space" aria-label="Shoot or start">SHOOT</button>
 			</div>
@@ -31,6 +31,7 @@
 		<script type="text/javascript" src="js/utils/utils.js"></script>
 		<script type="text/javascript" src="js/utils/font.js"></script>
 		<script type="text/javascript" src="js/utils/audio.js"></script>
+		<script type="text/javascript" src="js/gamepad_input.js"></script>
 
 		<script type="text/javascript" src="js/AudioPlayer.js"></script>
 		<script type="text/javascript" src="js/Display.js"></script>
@@ -54,6 +55,7 @@
 					game.keysDown[code] = isDown;
 				}
 			}
+
 
 			document.addEventListener('keydown', e => {
 				if (game.isDebug && e.code === 'KeyI') {
@@ -127,6 +129,7 @@
 			game.display.init(game.isDebug);
 			game.display.drawMenu(game.getHighScore());
 			window.requestAnimationFrame(() => game.update());
+
 		</script>
 		<style>
 			* {
@@ -306,7 +309,7 @@
 				#touchControls {
 					display: grid;
 					gap: 10px;
-					grid-template-columns: minmax(0, 1fr) minmax(84px, 0.4fr);
+					grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(84px, 0.4fr);
 					max-width: 800px;
 					width: min(100%, 800px);
 				}
@@ -315,11 +318,26 @@
 					display: grid;
 					gap: 10px;
 					grid-template-columns: repeat(3, minmax(0, 1fr));
+					grid-template-rows: 50% 50%;
+				}
+
+				#upButton {
+					grid-column: 2;
+				}
+
+				#leftButton {
+					grid-row: 2;
+				}
+
+				#rightButton {
+					grid-row: 2;
+					grid-column: 3;
 				}
 
 				#shootButton {
 					height: 100%;
 					min-height: 74px;
+					grid-column: 3;
 				}
 			}
 

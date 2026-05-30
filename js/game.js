@@ -383,6 +383,21 @@ const game = {
 				this.display.draw(this, this.shouldUpdateHUD());
 			}
 
+			if (isGamepadConnected()) {
+				const input = getGamepadInput();
+				const keys = Object.keys(this.keysDown);
+
+				keys.forEach(key => {
+					this.keysDown[key] = false;
+				});
+
+				if (input.left) this.keysDown[Utils.Keys.LEFT] = true;
+				if (input.right) this.keysDown[Utils.Keys.RIGHT] = true;
+				if (input.up) this.keysDown[Utils.Keys.UP] = true;
+				if (input.down) this.keysDown[Utils.Keys.DOWN] = true;
+				if (input.confirm) this.keysDown[Utils.Keys.SPACE] = true;
+			}
+
 			window.requestAnimationFrame(timestamp => game.update(timestamp));
 		}
 	},
